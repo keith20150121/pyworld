@@ -7,10 +7,6 @@
 
 //CONSOLE.log('inline.js loaded.');
 
-function dest() {
-    return window.document.getElementById('destText');
-}
-
 var g = [];
 g.dst = document.getElementById('destText');
 g.src = document.getElementById('srcText');
@@ -21,22 +17,24 @@ g.queue = []
 
 function dest_monitor() {
     try {
-        g.result = g.dst.children[0].children[0].innerHTML;
-        send(g.result);
-        if (typeof(g.result) != 'undefined') {
+        var e = g.dst.children[0].children[0];
+        g.id = e.id;
+        send(e.innerHTML);
+        if (typeof(e.innerHTML) != 'undefined') {
             if (g.init) {
             } else {
-                g.queue.push(g.result);
+                g.queue.push(e.innerHTML);
             }
         }
         var id = setInterval(function() {
-          var result = g.dst.children[0].children[0].innerHTML;
-          if (result != g.result) {
-            g.result = result;
+          var e = g.dst.children[0].children[0];
+          if (e.id != g.id) {
+            e.id = g.id;
+            //g.result = result;
             //if (g.src_lang.innerHTML.indexOf('English') || g.src_lang.innerHTML.indexOf('Chinese')) {
             //    return
             //}
-            send(result);
+            send(e.innerHTML);
           }
         }, 500);
         //alert('interval');
@@ -112,18 +110,10 @@ function dispatch(element, event) {
 
 function main() {
     g.websocket = bind_server();
-    //g.websocket.send('abcd');
     dest_monitor();
 }
 
 main();
-
-/*setInterval(function() {
-    g_src.value = '时间效应：' + Date.parse(new Date());
-    dispatch(g_do, 'click');
-} , 500);*/
-
-
 
 
 
