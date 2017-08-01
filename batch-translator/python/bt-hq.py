@@ -34,12 +34,11 @@ def translateByChromeExtension(src):
     def new_client(client, server):
         print("New client connected and was given id %d" % client['id'])
         data = new_client.data
-        if (data[0] < len(data[1])) {
+        if data[0] < len(data[1]) :
             server.send_message(client, data[1][data[0]])
             data[0] += 1
-        } else {
+        else:
             print('finished!')
-        }
         #server.send_message_to_all("Hey all, a new client has joined us")
 
     new_client.data = data
@@ -56,12 +55,11 @@ def translateByChromeExtension(src):
         print("<== Client(%d) said: %s" % (client['id'], message))
         data = message_received.data
         print('    ==> ' + data[1][data[0]])
-        if (data[0] < len(data[1])) {
+        if data[0] < len(data[1]) :
             server.send_message(client, data[1][data[0]])
             data[0] += 1
-        } else {
+        else:
             print('finished!')
-        }
 
     message_received.data = data
 
