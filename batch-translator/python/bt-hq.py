@@ -1,6 +1,12 @@
 import os
+#import imp
 import sys
+if sys.version.find('3') != 0:
+    reload(sys)
+    sys.setdefaultencoding('utf8')
 import xlrd
+from xlutils.copy import copy
+import re
 #import xlutils
 #from xlutils.copy import copy as xlutils_copy
 from websocket_server import WebsocketServer
@@ -15,6 +21,22 @@ class OpenXml:
 
     def save(self, path):
         self.openXml.save(path)
+
+class ExcelData:
+    def __init__(self, table, i, j):
+        self.x = i
+        self.y = j
+        self.table = table
+
+    def write(self, text):
+        self.table.write(self.x, self.y, unicode(text))
+
+class PPTData:
+    def __init__(self, run):
+        self.run = run
+
+    def write(self, text):
+        self.run.text = unicode(text)
 
 def openDocument(path):
     t = splitFileType(path)
@@ -48,31 +70,49 @@ def openPPTX(path):
                 continue
             for paragraph in shape.text_frame.paragraphs:
                 for run in paragraph.runs:
-                    if run.text.strip() != '':
-                        print(run.text)
-                        compound.append((run.text, run))
+                    if isStr(var):
+                        v = run.text.strip()
+                        if v != '' and not isAllCharacter(v):
+                            print(run.text)
+                            #compound.append((run.text, run))
+                            compound.append((run.text, PPTData(run)))
 
     return OpenXml(prs, 'pptx', compound)
 
+def isStr(var):
+    return (isinstance(var, unicode) or isinstance(var, str))
+
+def isAllCharacter(var):
+    return len(re.findall(r'[\d\w\s\-_\|\.\。\&\*\(\)\!@#$]', var)) == len(var)
+
 def openXLS(path):
     book = xlrd.open_workbook(path)
+    wb = copy(book)
     #table = data.sheet_by_index(0)
     tables = book.sheets()
+    count = len(tables)
     compound = []
 
+    i = 0
+#    while i < count:
     for table in tables:
+        wb_table = wb.get_sheet(i)
         nRows = table.nrows
         nCols = table.ncols
         for i in range(nRows):
             for j in range(nCols):
-                v = table.cell(i, j).value
-                if v.strip() != '':
-                    element = table.cell(i, j)
-                    #src.append(v)
-                    compound.append((element.value, element))
-                    print(element.value)
+                v = table.cell(i, j).value                
+                if isStr(v):
+                    v2 = v.strip()
+                    if v2 != '' and not isAllCharacter(v2):
+                        element = table.cell(i, j)
+                        #compound.append((element.value, element))
+                        compound.append((element.value, ExcelData(wb_table, i, j)))
+                        print(element.value)
 
-    return OpemXml(book, 'xlsx', compound)
+        i += 1
+
+    return OpenXml(wb, 'xlsx', compound)
 
 def translateByChromeExtension(src):
     data = [0, src]
@@ -110,7 +150,8 @@ def translateByChromeExtension(src):
         print('==>:' + data[1][data[0] - 1][0])
         print("<==:" + message)        
 
-        data[1][data[0] -1][1].text = message
+        #data[1][data[0] -1][1].text = message
+        data[1][data[0] -1][1].write(message)
         
         if data[0] < len(data[1]):
             #server.send_message(client, data[1][data[0]])
@@ -141,4 +182,4 @@ if __name__ == '__main__':
     #    print('data source out of range.')
     
     translateByChromeExtension(openxml.list)
-    openxml.save(sys.argv[1] + 'dest.' + openxml.type)
+    openxml.save(sys.argv[1] + '.dest.' + openxml.type)
