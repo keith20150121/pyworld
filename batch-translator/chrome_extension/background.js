@@ -16,9 +16,17 @@ function start(tab) {
         tabs[0]
     }*/
 
-    //alert('start ' + tab.id);
-    chrome.tabs.executeScript(tab.id, {file: 'inline.js'});
-//  chrome.webNavigation.onHistoryStateUpdated.addListener(onHistoryStateUpdated_);
+    //alert('start ' + tab.url);
+
+    if (tab.url.indexOf('fanyi.youdao.com') != -1) {
+        chrome.tabs.executeScript(tab.id, {file: 'youdao_chrome.js'});
+    } else if (tab.url.indexOf('www.bing.com/translator') != -1) {
+        chrome.tabs.executeScript(tab.id, {file: 'bing.js'});        
+    } else {
+        alert('NOT SUPPORTED PAGE.');
+    }
+
+    //chrome.webNavigation.onHistoryStateUpdated.addListener(onHistoryStateUpdated_);
     //chrome.webNavigation.onCompleted.addListener(onCompleted);
 
   //chrome.tabs.executeScript({ file: 'inline.js' });

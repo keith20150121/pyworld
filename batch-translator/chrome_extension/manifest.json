@@ -5,6 +5,8 @@
     "tabs", 
     "http://www.bing.com/translator/*",
     "https://www.bing.com/translator/*",
+    "http://fanyi.youdao.com/",
+    "https://fanyi.youdao.com/",
     "activeTab",
     "webNavigation"
   ],
