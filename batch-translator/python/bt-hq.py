@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-  
 import os
 #import imp
 import sys
-if sys.version.find('3') != 0:
+if sys.version_info < (3, 0):
     reload(sys)
     sys.setdefaultencoding('utf8')
 import xlrd
@@ -38,6 +39,48 @@ class PPTData:
     def write(self, text):
         self.run.text = unicode(text)
 
+class WordData:
+    def __init__(self, paragraph):
+        self.paragraph = paragraph
+
+    def write(self, text):
+        #print('bofore:' + self.paragraph.text)
+        self.paragraph.text = unicode(text)
+        #print('after:' + self.paragraph.text)
+
+class Chain:
+    class Array:
+        def __init__(self):
+            self.array = []
+
+        def write(self, text):
+            for meta in self.array:
+                meta.write(text)
+
+        def append(self, meta):
+            self.array.append(meta)
+
+    def __init__(self):
+        self.jitsu = {}
+
+    def addIfNew(self, text, meta):
+        array = self.jitsu.get(text)
+        if array == None:
+            array = Chain.Array()
+            array.append(meta)
+            self.jitsu[text] = array
+            return (False, array)
+
+        array.append(meta)
+        return (True, array) 
+
+
+def isString(var):
+    return (isinstance(var, unicode) or isinstance(var, str))
+
+def isAllCharacters(var):
+    return len(re.findall(r'[\d\w\s\-_\|\.\&\*\(\)\!@#$。！（）——“”？]', var)) == len(var)
+
 def openDocument(path):
     t = splitFileType(path)
     if t == 'xls' or t == 'xlsx':
@@ -53,9 +96,25 @@ def openDOCX(path):
     docx = Document(path)
     paragraphs = docx.paragraphs
     compound = []
+    chain = Chain()
+
+    def add_text(pointer, compound, chain):
+        text = pointer.text
+        if isString(text):
+            v = text.strip()
+            if v != '' and not isAllCharacters(v):
+                meta = WordData(pointer)
+                added, array = chain.addIfNew(text, meta)
+                if not added:
+                    compound.append((text, array))
+
     for p in paragraphs:
-        if p.text.strip() != '':
-            compound.append((p.text, p))
+        add_text(p, compound, chain)
+
+    for table in docx.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                add_text(cell, compound, chain)
 
     return OpenXml(docx, 'docx', compound)
 
@@ -70,47 +129,43 @@ def openPPTX(path):
                 continue
             for paragraph in shape.text_frame.paragraphs:
                 for run in paragraph.runs:
-                    if isStr(var):
+                    if isString(var):
                         v = run.text.strip()
-                        if v != '' and not isAllCharacter(v):
+                        if v != '' and not isAllCharacters(v):
                             print(run.text)
                             #compound.append((run.text, run))
                             compound.append((run.text, PPTData(run)))
 
     return OpenXml(prs, 'pptx', compound)
 
-def isStr(var):
-    return (isinstance(var, unicode) or isinstance(var, str))
-
-def isAllCharacter(var):
-    return len(re.findall(r'[\d\w\s\-_\|\.\。\&\*\(\)\!@#$]', var)) == len(var)
-
 def openXLS(path):
-    book = xlrd.open_workbook(path)
+    book = xlrd.open_workbook(path, on_demand=True, formatting_info=True)
     wb = copy(book)
     #table = data.sheet_by_index(0)
     tables = book.sheets()
     count = len(tables)
     compound = []
+    chain = Chain()
 
-    i = 0
+
 #    while i < count:
     for table in tables:
-        wb_table = wb.get_sheet(i)
+        wb_table = wb.get_sheet(table.name)
         nRows = table.nrows
         nCols = table.ncols
         for i in range(nRows):
             for j in range(nCols):
                 v = table.cell(i, j).value                
-                if isStr(v):
+                if isString(v):
                     v2 = v.strip()
-                    if v2 != '' and not isAllCharacter(v2):
+                    if v2 != '' and not isAllCharacters(v2):
                         element = table.cell(i, j)
                         #compound.append((element.value, element))
-                        compound.append((element.value, ExcelData(wb_table, i, j)))
+                        meta = ExcelData(wb_table, i, j)
+                        added, array = chain.addIfNew(element.value, meta)
+                        if not added:
+                            compound.append((element.value, array))
                         print(element.value)
-
-        i += 1
 
     return OpenXml(wb, 'xlsx', compound)
 
