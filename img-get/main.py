@@ -35,8 +35,28 @@ class ImgCrawler:
     def assign(self, fetcher):
         self.fetcher = fetcher
 
-    def visit(self, req):
-        return self.opener.open(req)
+    def visit(self, url):
+        print('visit:' + url)
+        return self.visitWithHeader(url, ImgCrawler.getHeaders())
+        
+    def visitWithHeader(self, url, h):
+        req = urlrequest.Request(url = url, headers = h)
+        content = None
+        for i in range(8):
+            try:
+                res = self.opener.open(req, timeout = 30)
+                #b = res.read()
+                #content = b.decode('utf8', 'ignore')
+                print('about to read')
+                #print(b)
+                content = self.read(res)
+                #print(content)
+            except Exception as e:
+                print(e)
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!try more %d times' % (7 - i))
+        
+        print('return content')
+        return content
 
     @staticmethod
     def read(res):
@@ -53,22 +73,6 @@ class ImgCrawler:
         if failed == True:    
             try:
                 print('original %s failed, try utf8'% encode)
-                u = b.decode('utf8')
-                failed = False
-            except Exception as e:
-                print(e)
-
-        if failed == True:
-            try:
-                print('try gbk')
-                u = b.decode('gbk')
-                failed = False
-            except Exception as e:
-                print(e)
-
-        if failed == True:
-            try:
-                print('try utf8 ignore')
                 u = b.decode('utf8', 'ignore')
                 failed = False
             except Exception as e:
@@ -99,6 +103,10 @@ class ImgCrawler:
             'User-Agent' : 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:40.0) Gecko/20100101 Firefox/40.0',
             'Accept-Language' : 'en-US,en;q=0.5',
             'Connection' : 'keep-alive',
+            'Accept' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Encoding' : "gzip, deflate",
+            'Accept-Language' : 'en-US,en;q=0.5',
+            'Upgrad-Insecure-Request' : '1'
         }
         return h
 
@@ -118,15 +126,16 @@ class ImgCrawler:
         return header[header.find('charset=') + len('charset='):]
 
     def write(self, b, path):
-        if os.path.exists(path) == False:
-            os.mkdir(path)
+        #if os.path.exists(path) == False:
+        #    os.mkdir(path)
         f = open(path, 'wb')
         f.write(b)
         f.flush()
         f.close()
         
     def download(self, url, path):
-        b = self.opener.open(url).read()
+        req = urlrequest.Request(url = url, headers = ImgCrawler.getHeaders())
+        b = self.opener.open(req).read()
         self.write(b, path)
 
 def fetch_web_objects(webs):

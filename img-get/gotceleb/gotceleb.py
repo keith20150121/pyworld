@@ -69,17 +69,10 @@ class Fetch:
         #self.homePage = 'http://www.baidu.com'
         self.homePage = 'http://www.gotceleb.com/?s='
         print('gotceleb.Fetch init')
+        
 
-    def common(self, url, h):
-        crawler = self.crawler
-        print(url)
-        req = urlrequest.Request(url = url, headers = h)
-        content = crawler.read(crawler.visit(req))
-        return content
-
-    def second(self, url, h):
-        content = self.common(url, h)
-
+    def second(self, url):
+        content = self.crawler.visit(url)
         '''
         key = 'class="attachment-medium size-medium"'
         beg = content.find(key)
@@ -102,24 +95,24 @@ class Fetch:
 
         return ret
 
-    def third(self, url, h):
-        crawler = self.crawler
-        content = self.common(url, h)
+    def third(self, url):
+        content = self.crawler.visit(url)
         key = 'class="attachment-medium size-medium"'
         beg = content.find(key)
         pic = findSrc(content, beg + len(key))
         if None is pic:
             print('pic is None? NG4')
             return
-        req = urlrequest.Request(url = pic, headers = h)
         print('OK4')
-        crawler.download(req, current() + getName(pic))
+        crawler.download(url, current() + getName(pic))
         
     def begin(self, crawler):
         self.crawler = crawler
         for word in self.keywords:
-            h = crawler.getHeaders()
-            content = self.common(self.homePage + word, h)
+            #crawler.visit('http://www.baidu.com')
+            #crawler.visit('http://www.gotceleb.com')
+            content = crawler.visit(self.homePage + word)
+            crawler.write(content, current() + 'text.xml')
             #req = urlrequest.Request(url = self.homePage + word, headers = h)
             #res = crawler.visit(req)
             #content = crawler.read(res)
@@ -129,11 +122,10 @@ class Fetch:
                 url = findHref(article, 0)
                 if None is url:
                     continue
-                req = urlrequest.Request(url = url, headers = h)
-                content = crawler.read(crawler.visit(req))
-                bigs = self.second(crawler, url, h)
+                content = crawler.visit(url)
+                bigs = self.second(url)
                 for big in bigs:
-                    self.third(big, h)
+                    self.third(big)
                 
             #print(res.read())        
         
