@@ -5,7 +5,7 @@ import urllib.parse
 import re
 import sys
 import time
-import os
+import os, shutil
 import json
 import random
 import http.client
@@ -186,7 +186,35 @@ class Utl:
         header = res.getheader('Content-Type').lower()
         return header[header.find('charset=') + len('charset='):]
 
-class ImgCrawler:
+class WgetCrawler:
+    def __init__(self):
+        self.tmp = current() + 'tmp' + os.path.sep
+        if os.path.exists(self.tmp) == False:
+            os.mkdir(self.tmp)
+        self.utl = Utl
+
+    def local(self):
+        return (self, self.utl)
+
+    def visit(self, url):
+        return self.visitWithHeader(url, Utl.getHeaders())
+        
+    def visitWithHeader(self, url, h):
+        print('visit:' + url)
+        fileName = Utl.getName(url)
+        dst = self.tmp + 'temp'
+        os.system('wget -O %s --timeout=30 %s' % (dst, url))
+        f = open(dst, 'r')
+        content = f.read()
+        f.close()
+        os.remove(dst)
+        return content
+       
+    def download(self, url, path):
+        fileName = Utl.getName(url)
+        os.system('wget -O %s %s ' % (path, url))
+        
+class HttpCrawler:
     def __init__(self):
         cookieJar = http.cookiejar.CookieJar()
         handler = urlrequest.HTTPCookieProcessor(cookieJar)
@@ -205,7 +233,7 @@ class ImgCrawler:
         content = None
         for i in range(8):
             try:
-                res = self.opener.open(req, timeout = 15)
+                res = self.opener.open(req, timeout = 40)
                 #b = res.read()
                 #content = b.decode('utf8', 'ignore')
                 print('about to read')
@@ -223,7 +251,7 @@ class ImgCrawler:
         req = urlrequest.Request(url = url, headers = Utl.getHeaders())
         for i in range(8):
             try:
-                res = self.opener.open(req, timeout = 15)
+                res = self.opener.open(req, timeout = 40)
                 b = res.read()
                 break
             except Exception as e:
@@ -235,15 +263,27 @@ class ImgCrawler:
         else:
             print('read() error')
 
-def fetch_web_objects(webs):
-    cur = current()
-    f = open(cur + webs, 'r')
+def load_json(path):
+    f = open(path, 'r')
     objs = json.loads(f.read())#, encoding="UTF8")
     f.close()
+    return objs
+
+def fetch_web_objects(webs):
+    objs = load_json(current() + webs)
     return (objs.keys())
 
+def decide_crawler(rule):
+    objs = load_json(current() + rule)
+    crawler = objs['crawler']
+    if 'wget' == crawler:
+        return WgetCrawler()
+    if 'http' == crawler:
+        return HttpCrawler()
+    return
+
 def main():
-    crawler = ImgCrawler()
+    crawler = decide_crawler('rule.json')
     fetchers = fetch_web_objects('webs.json')
     objs = []
     for fetcher in fetchers:
