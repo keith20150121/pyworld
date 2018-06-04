@@ -78,12 +78,29 @@ class Utl:
         return ret, ma
 
     @staticmethod
+    def extractTagContent(content, prefix, postfix, quo = '"', tryQuo = True):
+        beg = content.find(prefix)
+        if -1 == beg:
+            if -1 != prefix.find(quo) and True == tryQuo:
+                if quo == '"':
+                    prefix = prefix.replace(quo, "'")
+                    postfix = postfix.replace(quo, "'")
+                    return Utl.extractTagContent(content, prefix, postfix, "'", False)
+            else:
+                print('Not found ' + tag)
+            return
+        end = content.find(postfix, beg + len(prefix))
+        if -1 == end:
+            print('end is -1?')
+            return
+        return content[beg : end]
+
+    @staticmethod
     def findLinkAfterTag(content, key, tag, quo = '"'):
         beg = content.find(tag)
         if -1 == beg:
             print('Not found ' + tag)
             return
-        beg + len(tag)
         return Utl.findLink(content, key, beg, quo)
 
     @staticmethod
@@ -160,7 +177,7 @@ class Utl:
 
     @staticmethod
     def headers(update):
-        h = ImgCrawler.getHeaders()
+        h = Utl.getHeaders()
         h.update(update)
         return h
 
@@ -180,15 +197,15 @@ class ImgCrawler:
         return (self, self.utl)
 
     def visit(self, url):
-        print('visit:' + url)
         return self.visitWithHeader(url, Utl.getHeaders())
         
     def visitWithHeader(self, url, h):
+        print('visit:' + url)
         req = urlrequest.Request(url = url, headers = h)
         content = None
         for i in range(8):
             try:
-                res = self.opener.open(req, timeout = 30)
+                res = self.opener.open(req, timeout = 15)
                 #b = res.read()
                 #content = b.decode('utf8', 'ignore')
                 print('about to read')
@@ -197,15 +214,26 @@ class ImgCrawler:
                 break
             except Exception as e:
                 print(e)
-                print('!!!!!!!!try more %d times' % (7 - i))
+                print('!try more %d times' % (7 - i))
         
         print('return content')
         return content
        
     def download(self, url, path):
         req = urlrequest.Request(url = url, headers = Utl.getHeaders())
-        b = self.opener.open(req).read()
-        Utl.write(b, path)
+        for i in range(8):
+            try:
+                res = self.opener.open(req, timeout = 15)
+                b = res.read()
+                break
+            except Exception as e:
+                print(e)
+                print('!try more %d times' % (7 - i))
+                
+        if None is not b:
+            Utl.write(b, path)
+        else:
+            print('read() error')
 
 def fetch_web_objects(webs):
     cur = current()
@@ -213,14 +241,6 @@ def fetch_web_objects(webs):
     objs = json.loads(f.read())#, encoding="UTF8")
     f.close()
     return (objs.keys())
-    
-
-def get_keyword(keyword):
-    f = open(current() + keyword, 'r')
-    keywords = f.read()
-    print(keywords)
-    f.close()
-    return keywords
 
 def main():
     crawler = ImgCrawler()

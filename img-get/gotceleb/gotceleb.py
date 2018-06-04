@@ -7,7 +7,7 @@ import sys
 import time
 import os
 import json
-import http.client
+import random
 
 if sys.version.find('3') == 0:
     import urllib.request
@@ -24,10 +24,14 @@ if __name__ == '__main__':
 def current():
     return os.path.dirname(os.path.realpath(__file__)) + os.path.sep
 
-def get_keyword(file_path):
+def read(file_path):
     f = open(file_path, 'r')
     content = f.read()
     f.close()
+    return content
+
+def get_keyword(file_name):
+    content = read(current() + file_name)
     keywords = content.split(',')
     ret = []
     for word in keywords:
@@ -41,11 +45,30 @@ def get_keyword(file_path):
     print(ret)
     return ret
 
+def toInt(a, default):
+    if None is a:
+        a = default
+    else:
+        try:
+            a = int(a)
+        except Exception as e:
+            a = default
+    return a
+
+def get_information(file_name):
+    content = read(current() + file_name)
+    objs = json.loads(content)
+    beg = objs['from']
+    end = objs['to']
+    return (toInt(beg, 1), toInt(end, 1))
+
 class Fetch:
     def __init__(self):
-        self.keywords = get_keyword(current() + 'keyword-list.txt')
+        self.keywords = get_keyword('keyword-list.txt')
+        self.beginPage, self.endPage = get_information('config.json')
         #self.homePage = 'http://www.baidu.com'
         self.homePage = 'http://www.gotceleb.com/?s='
+        self.multiPage = 'http://www.gotceleb.com/page/%d?s=%s'
         print('gotceleb.Fetch init done')
         
     def second(self, url, path):
@@ -85,8 +108,9 @@ class Fetch:
             return
         print('OK5')
         name = utl.getName(pic)
-        if None is name:
-            name = time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))
+        if None is name or 250 < len(path + name):
+            name = time.strftime('%H%M%S', time.localtime(time.time()))
+            name = '%s%d%s.' % (name, random.randint(56, 8920), 'jpg')
         else:
             name = utl.makePathName(name)
 
@@ -94,36 +118,68 @@ class Fetch:
         if os.path.exists(path) == True:
             path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))
         crawler.download(pic, path)
-        
+
+
+    def first(self, content, page):
+        crawler, utl = self.crawler.local()
+        urls, protos = utl.extractLinks(content, '<article ', 'href="')
+        if None is urls:
+            print('extractLinks return None??')
+            return
+        print('OK2')
+        i = 0
+        for url in urls:
+            title = utl.findLink(protos[i], 'title="', 0)
+            title = utl.makePathName(title)
+            if None is not title:
+                path = current() + title + os.path.sep
+                if os.path.exists(path) == False:
+                    os.mkdir(path)
+            else:
+                print('title is None?')
+            self.second(url, path)
+            i = i + 1    
+    
     def begin(self, crawler):
         utl = crawler.utl
         self.crawler = crawler
+        self.pages = 1
         for word in self.keywords:
-            #crawler.visit('http://www.baidu.com')
-            #crawler.visit('http://www.gotceleb.com')
-            content = crawler.visit(self.homePage + word)
-            #utl.write(content, current() + 'text.xml')
-            #req = urlrequest.Request(url = self.homePage + word, headers = h)
-            #res = crawler.visit(req)
-            #content = crawler.read(res)
-            urls, protos = utl.extractLinks(content, '<article ', 'href="')
-            if None is urls:
-                print('extractLinks return None??')
-                return
-            print('OK2')
-            i = 0
-            for url in urls:
-                title = utl.findLink(protos[i], 'title="', 0)
-                title = utl.makePathName(title)
-                if None is not title:
-                    path = current() + title + os.path.sep
-                    if os.path.exists(path) == False:
-                        os.mkdir(path)
+            previous = self.homePage + word
+            content = crawler.visit(previous)
+            pages = utl.extractTagContent(content, '<span class="pages">', '</span>')
+            if None is not pages:
+                pages = re.sub(u'[^0-9]', '', pages)
+                if None is not pages and 2 <= len(pages):
+                    self.pages = int(pages[1:])
+                    print('total pages:' + str(self.pages))
                 else:
-                    print('title is None?')
-                self.second(url, path)
-                i = i + 1
-            #print(res.read())
+                    print('only 1 page.')
+            else:
+                print('extrace pages failed. only 1 page.')
+
+            if None is not self.beginPage and self.beginPage > self.pages:
+                print('begin page is out of range:' + str(self.pages))
+                return
+
+            page = self.beginPage
+            if page > 1:
+                h = utl.headers({
+                    'Referer' : previous
+                    })
+                print(h)
+                previous = self.multiPage % (page, word)
+                content = crawler.visitWithHeader(previous, h)                
+            while True:
+                print('begin page:' + str(page))
+                self.first(content, page)
+                page = page + 1
+                if page < self.pages:
+                    h = utl.headers({'Referer' : previous})
+                    previous = self.multiPage % (page, word)
+                    content = crawler.visitWithHeader(previous, h)
+                else:
+                    break;
         
         
         
