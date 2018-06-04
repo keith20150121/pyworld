@@ -22,7 +22,7 @@ if __name__ == '__main__':
     print('gotceleb do nothing as main')
 
 def current():
-    return os.path.dirname(os.path.realpath(__file__)) + '/'
+    return os.path.dirname(os.path.realpath(__file__)) + os.path.sep
 
 def get_keyword(file_path):
     f = open(file_path, 'r')
@@ -41,93 +41,89 @@ def get_keyword(file_path):
     print(ret)
     return ret
 
-def findLink(content, key, beg):
-    beg = content.find(key, beg)
-    if -1 == beg:
-        print('beg is -1?')
-        return
-    beg = beg + len(key)
-    end = content.find('"', beg)
-    if -1 == end:
-        print('end is -1?')
-        return
-    return content[beg:end]
-
-def findHref(content, beg):
-    return findLink(content, 'href="', beg)
-
-def findSrc(content, beg):
-    return findLink(content, 'src="', beg)
-
-def getName(url):
-    beg = url.rfind('/')
-    return url[beg:]
-
 class Fetch:
     def __init__(self):
         self.keywords = get_keyword(current() + 'keyword-list.txt')
         #self.homePage = 'http://www.baidu.com'
         self.homePage = 'http://www.gotceleb.com/?s='
-        print('gotceleb.Fetch init')
+        print('gotceleb.Fetch init done')
         
-
-    def second(self, url):
-        content = self.crawler.visit(url)
-        '''
-        key = 'class="attachment-medium size-medium"'
-        beg = content.find(key)
-        pic = findSrc(content, beg + len(key))
-        req = urlrequest.Request(url = pic, headers = h)
-        print('ok4')
-        crawler.download(req, current() + getName(pic))
-        '''
-        key = 'class="gallery-icon portrait"'
-        bigs = content.split(key)
+    def second(self, url, path):
+        crawler, utl = self.crawler.local()
+        content = crawler.visit(url)
+        #utl.write(content, current() + 'text.xml')
+        key = ' class="gallery-item">'
+        #key = 'gallery-item'
+        #if -1 == content.find(key):
+        #    key = " class='gallery-item'>"
+        urls, protos = utl.extractLinks(content, key, 'href="')
+        if None is urls:
+            print('extractLinks return None??')
+            key = " class='gallery-item'>"
+            urls, protos = utl.extractLinks(content, key, 'href="')
+            if None is urls:
+                print('extractLinks return None again?')
+                return
         print('OK3')
+        for url in urls:
+            self.third(url, path)
 
-        ret = []
-        for big in bigs:
-            url = findHref(big, 0)
-            if None is url:
-                print('href url is None? NG3-1.')
-                continue
-            ret.append(url)
-
-        return ret
-
-    def third(self, url):
-        content = self.crawler.visit(url)
-        key = 'class="attachment-medium size-medium"'
-        beg = content.find(key)
-        pic = findSrc(content, beg + len(key))
-        if None is pic:
-            print('pic is None? NG4')
+    def third(self, url, path):
+        crawler, utl = self.crawler.local()
+        
+        content = crawler.visit(url)
+        tag = 'attachment type-attachment status-inherit hentry"'
+        pic = utl.findLinkAfterTag(content, 'href="', tag)
+        if None == pic:
+            print('pic not found? NG4')
             return
         print('OK4')
-        crawler.download(url, current() + getName(pic))
+        content = crawler.visit(pic)
+        pic = utl.findLinkAfterTag(content, 'src="', tag)
+        if None == pic:
+            print('pic not found? NG5')
+            return
+        print('OK5')
+        name = utl.getName(pic)
+        if None is name:
+            name = time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))
+        else:
+            name = utl.makePathName(name)
+
+        path = path + name
+        if os.path.exists(path) == True:
+            path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))
+        crawler.download(pic, path)
         
     def begin(self, crawler):
+        utl = crawler.utl
         self.crawler = crawler
         for word in self.keywords:
             #crawler.visit('http://www.baidu.com')
             #crawler.visit('http://www.gotceleb.com')
             content = crawler.visit(self.homePage + word)
-            crawler.write(content, current() + 'text.xml')
+            #utl.write(content, current() + 'text.xml')
             #req = urlrequest.Request(url = self.homePage + word, headers = h)
             #res = crawler.visit(req)
             #content = crawler.read(res)
-            articles = content.split('article')
+            urls, protos = utl.extractLinks(content, '<article ', 'href="')
+            if None is urls:
+                print('extractLinks return None??')
+                return
             print('OK2')
-            for article in articles:
-                url = findHref(article, 0)
-                if None is url:
-                    continue
-                content = crawler.visit(url)
-                bigs = self.second(url)
-                for big in bigs:
-                    self.third(big)
-                
-            #print(res.read())        
+            i = 0
+            for url in urls:
+                title = utl.findLink(protos[i], 'title="', 0)
+                title = utl.makePathName(title)
+                if None is not title:
+                    path = current() + title + os.path.sep
+                    if os.path.exists(path) == False:
+                        os.mkdir(path)
+                else:
+                    print('title is None?')
+                self.second(url, path)
+                i = i + 1
+            #print(res.read())
         
         
         
