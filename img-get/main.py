@@ -9,6 +9,7 @@ import os, shutil
 import json
 import random
 import http.client
+import codecs
 
 if sys.version.find('3') == 0:
     import urllib.request
@@ -204,7 +205,8 @@ class WgetCrawler:
         fileName = Utl.getName(url)
         dst = self.tmp + 'temp'
         os.system('wget -O %s --timeout=30 %s' % (dst, url))
-        f = open(dst, 'r')
+        f = codecs.open(dst,'r','utf-8')
+        #f = open(dst, 'r')
         content = f.read()
         f.close()
         os.remove(dst)
