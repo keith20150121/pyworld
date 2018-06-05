@@ -71,6 +71,18 @@ class Fetch:
         self.multiPage = 'http://www.gotceleb.com/page/%d?s=%s'
         print('gotceleb.Fetch init done')
         
+    @staticmethod
+    def createDownloadList(urls, path):
+        try:
+            path = path + 'urls.txt'
+            f = open(path, 'w', encoding='utf-8')
+            for url in urls:
+                f.write(url + '\n')
+            f.flush()
+            f.close()                
+        except Exception as e:
+            print(e)    
+        
     def second(self, url, path):
         crawler, utl = self.crawler.local()
         content = crawler.visit(url)
@@ -87,7 +99,8 @@ class Fetch:
             if None is urls:
                 print('extractLinks return None again?')
                 return
-        print('OK3')
+        print('OK3, create download url list.')
+        Fetch.createDownloadList(urls, path)
         for url in urls:
             self.third(url, path)
 
