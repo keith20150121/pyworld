@@ -62,6 +62,16 @@ def get_information(file_name):
     end = objs['to']
     return (toInt(beg, 1), toInt(end, 1))
 
+
+class fw:
+    def __init__(self, path):
+        self.f = open(path, 'w', encoding='utf-8')
+    def close(self):
+        self.f.close()
+    def dump(self, sth):
+        self.f.flush()
+        self.f.write(sth + '\n')
+
 class Fetch:
     def __init__(self):
         self.keywords = get_keyword('keyword-list.txt')
@@ -70,19 +80,7 @@ class Fetch:
         self.homePage = 'http://www.gotceleb.com/?s='
         self.multiPage = 'http://www.gotceleb.com/page/%d?s=%s'
         print('gotceleb.Fetch init done')
-        
-    @staticmethod
-    def createDownloadList(urls, path):
-        try:
-            path = path + 'urls.txt'
-            f = open(path, 'w', encoding='utf-8')
-            for url in urls:
-                f.write(url + '\n')
-            f.flush()
-            f.close()                
-        except Exception as e:
-            print(e)    
-        
+
     def second(self, url, path):
         crawler, utl = self.crawler.local()
         content = crawler.visit(url)
@@ -100,9 +98,12 @@ class Fetch:
                 print('extractLinks return None again?')
                 return
         print('OK3, create download url list.')
-        Fetch.createDownloadList(urls, path)
+        f = fw(path + 'urls.txt')
         for url in urls:
-            self.third(url, path)
+            pic = self.third(url, path)
+            if None is not pic:
+                f.dump(pic)
+        f.close()
 
     def third(self, url, path):
         crawler, utl = self.crawler.local()
@@ -129,9 +130,10 @@ class Fetch:
 
         path = path + name
         if os.path.exists(path) == True:
-            path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))
-        crawler.download(pic, path)
-
+            path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))       
+        #crawler.download(pic, path)
+        crawler.mission.push(pic, path)
+        return pic
 
     def first(self, content, page):
         crawler, utl = self.crawler.local()

@@ -10,6 +10,9 @@ import json
 import random
 import http.client
 import codecs
+import queue
+from threading import Thread
+from threading import Event
 
 if sys.version.find('3') == 0:
     import urllib.request
@@ -187,6 +190,30 @@ class Utl:
         header = res.getheader('Content-Type').lower()
         return header[header.find('charset=') + len('charset='):]
 
+class TimeCostMisson(Thread):
+    class Data:
+        def __init__(self, url, path):
+            self.url = url
+            self.path = path
+    
+    def __init__(self, crawler):
+        Thread.__init__(self)
+        self.data = queue.Queue()
+        self.crawler = crawler
+        #self.event = event
+        #self.mutex = mutex
+
+    def push(self, url, path):
+        d = TimeCostMisson.Data(url, path)
+        self.data.put(d)
+
+    def run(self):
+        print('mission started...')
+        while True:
+            d = self.data.get()
+            print('begin download')
+            self.crawler.download(d.url, d.path)       
+
 class WgetCrawler:
     def generateId(self):
         return '%d%d' % (os.getpid(), id(self))
@@ -196,6 +223,8 @@ class WgetCrawler:
         if os.path.exists(self.tmp) == False:
             os.makedirs(self.tmp)
         self.utl = Utl
+        self.mission = TimeCostMisson(self)
+        self.mission.start()
 
     def local(self):
         return (self, self.utl)
