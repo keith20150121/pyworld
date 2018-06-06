@@ -188,10 +188,13 @@ class Utl:
         return header[header.find('charset=') + len('charset='):]
 
 class WgetCrawler:
+    def generateId(self):
+        return '%d%d' % (os.getpid(), id(self))
+
     def __init__(self):
-        self.tmp = current() + 'tmp' + os.path.sep
+        self.tmp = '%s%s%c' % (current(), 'tmp', os.path.sep)
         if os.path.exists(self.tmp) == False:
-            os.mkdir(self.tmp)
+            os.makedirs(self.tmp)
         self.utl = Utl
 
     def local(self):
@@ -203,7 +206,7 @@ class WgetCrawler:
     def visitWithHeader(self, url, h):
         print('visit:' + url)
         fileName = Utl.getName(url)
-        dst = self.tmp + 'temp'
+        dst = '%s%s%s' % (self.tmp, 'temp', self.generateId())
         os.system('wget -O %s --timeout=30 %s' % (dst, url))
         f = codecs.open(dst,'r','utf-8')
         #f = open(dst, 'r')
