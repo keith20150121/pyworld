@@ -190,6 +190,24 @@ class Utl:
         header = res.getheader('Content-Type').lower()
         return header[header.find('charset=') + len('charset='):]
 
+    @staticmethod
+    def createPath(path):
+        if os.path.exists(path) == False:
+            os.makedirs(path)
+
+    @staticmethod
+    def flatternHeaders(h):
+        a = '--header="'
+        r = ''
+        for key in h.keys():
+            r = '%s%s%s:%s" ' % (r, a, key, h[key])
+        return r
+
+    @staticmethod
+    def flatternCookie(c):
+        r = '--save-cookies="%s" --load-cookies="%s" ' % (c, c)
+        return r
+
 class TimeCostMisson(Thread):
     class Data:
         def __init__(self, url, path):
@@ -219,10 +237,16 @@ class WgetCrawler:
         return '%d%d' % (os.getpid(), id(self))
 
     def __init__(self):
-        self.tmp = '%s%s%c' % (current(), 'tmp', os.path.sep)
-        if os.path.exists(self.tmp) == False:
-            os.makedirs(self.tmp)
+        iden = self.generateId()
+        sep = os.path.sep
+        tmp = '%s%s%c' % (current(), 'tmp', sep)
+        Utl.createPath(tmp)
+        self.tempFilePath = '%s%s%s' % (tmp, 'temp', iden)
+        self.tmp = '"%s"' % (self.tempFilePath)
         self.utl = Utl
+        tmp = '%s%s%c' % (current(), 'cookie', sep)
+        Utl.createPath(tmp)
+        self.cookie = '"%s%s%s"' % (tmp, 'cookie', iden)
         self.mission = TimeCostMisson(self)
         self.mission.start()
 
@@ -231,17 +255,19 @@ class WgetCrawler:
 
     def visit(self, url):
         return self.visitWithHeader(url, Utl.getHeaders())
-        
+
     def visitWithHeader(self, url, h):
         print('visit:' + url)
         fileName = Utl.getName(url)
-        dst = '%s%s%s' % (self.tmp, 'temp', self.generateId())
-        os.system('wget -O %s --timeout=30 %s' % (dst, url))
-        f = codecs.open(dst,'r','utf-8')
+        cmd = 'wget -d %s%s-O %s --timeout=30 %s' % (Utl.flatternHeaders(h), Utl.flatternCookie(self.cookie), self.tmp, url)
+        print(cmd)
+        os.system(cmd)
+        print(self.tmp)
+        f = codecs.open(self.tempFilePath, 'r','utf-8')
         #f = open(dst, 'r')
         content = f.read()
         f.close()
-        os.remove(dst)
+        #os.remove(self.tempFilePath)
         return content
        
     def download(self, url, path):

@@ -132,7 +132,8 @@ class Fetch:
         if os.path.exists(path) == True:
             path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))       
         #crawler.download(pic, path)
-        crawler.mission.push(pic, path)
+        #crawler.mission.push(pic, path)
+        self.download(crawler, pic, path)
         return pic
 
     def first(self, content, page):
@@ -154,11 +155,20 @@ class Fetch:
                 print('title is None?')
             self.second(url, path)
             i = i + 1    
+
+    @staticmethod
+    def callWorkThread(crawler, pic, path):
+        crawler.mission.push(pic, path)
+
+    @staticmethod
+    def doItMyself(crawler, pic, path):
+        crawler.download(pic, path)        
     
     def begin(self, crawler):
         utl = crawler.utl
         self.crawler = crawler
         self.pages = 1
+        self.download = Fetch.callWorkThread if crawler.mission is not None else Fetch.doItMyself
         for word in self.keywords:
             previous = self.homePage + word
             content = crawler.visit(previous)
@@ -178,6 +188,7 @@ class Fetch:
                 return
 
             page = self.beginPage
+            end = self.endPage if self.endPage is not None and self.endPage > page else self.pages
             if page > 1:
                 h = utl.headers({
                     'Referer' : previous
@@ -189,7 +200,7 @@ class Fetch:
                 print('begin page:' + str(page))
                 self.first(content, page)
                 page = page + 1
-                if page < self.pages:
+                if page <= end:#self.pages:
                     h = utl.headers({'Referer' : previous})
                     previous = self.multiPage % (page, word)
                     content = crawler.visitWithHeader(previous, h)
