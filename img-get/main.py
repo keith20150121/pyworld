@@ -356,7 +356,8 @@ def main():
         obj.begin(crawler)
         objs.append(obj)
     if None is not crawler.mission:
-        crawler.mission.push(TimeCostMisson.Data(None, None, True))
+        crawler.mission.push(TimeCostMisson.Data(None, None, True), '')
+        crawler.mission.join()
         
 if __name__ == '__main__':
     main()

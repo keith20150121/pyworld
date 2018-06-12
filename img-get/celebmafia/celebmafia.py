@@ -87,12 +87,21 @@ class Fetch:
         content = crawler.visit(url)
         key = '<div class="image-box">'
         urls, protos = utl.extractLinks(content, key, 'href="')
+        if urls is None:
+            print('error!!!!!!')
+            return
         print('OK3, create download url list.')
         f = fw(path + 'urls.txt')
         for url in urls:
+            name = utl.getName(url)
+            if None is name or 250 < len(path + name):
+                name = time.strftime('%H%M%S', time.localtime(time.time()))
+                name = '%s%d%s.' % (name, random.randint(56, 8920), 'jpg')
+            else:
+                name = utl.makePathName(name)
             if None is not url:
                 f.dump(url)
-                self.download(crawler, url, path)
+                self.download(crawler, url, path + name)
             else:
                 print('url is None?')
         f.close()
@@ -128,31 +137,6 @@ class Fetch:
         self.download(crawler, pic, path)
         return pic
 
-    def first2(self, content, page):
-        crawler, utl = self.crawler.local()
-        urls, protos = utl.extractLinks(content, 'siq-partner-result', 'href="')
-        if None is urls:
-            print('extractLinks return None??')
-            return
-        print('OK2')
-        i = 0
-        for url in urls:
-            title = utl.extractTagContent(protos[i], '>', '</a>', 0)
-            if title is not None:
-                title = re.sub('<em>|</em>', '', title)
-                title = utl.makePathName(title)
-            else:
-                print('get title failed')
-                title = time.strftime('%H%M%S', time.localtime(time.time()))
-            if None is not title:
-                path = current() + title + os.path.sep
-                if os.path.exists(path) == False:
-                    os.mkdir(path)
-            else:
-                print('title is None?')
-            self.second(url, path)
-            i = i + 1
-
     def first(self, l):
         for p in l:
             title = p.title
@@ -181,8 +165,7 @@ class Fetch:
             self.url = url
             self.title = title
 
-    @staticmethod
-    def fetch(content, l):
+    def fetch(self, content, l):
         j = (json.loads(content))['main']
         records = j['records']
         if None is records or type(records) is not type([]):
@@ -190,7 +173,9 @@ class Fetch:
             return l
         
         for a in records:
-            l.append(Fetch.Pairs(a['url'], re.sub('<em>|</em>', '', a['title'])))
+            title = re.sub('<em>|</em>', '', a['title'])
+            title = self.crawler.utl.makePathName(title)
+            l.append(Fetch.Pairs(a['url'], title))
 
         return l
 
@@ -217,7 +202,9 @@ class Fetch:
         total = j['totalResults']
         ret = []
         for a in records:
-            ret.append(Fetch.Pairs(a['url'], re.sub('<em>|</em>', '', a['title'])))
+            title = re.sub('<em>|</em>', '', a['title'])
+            title = self.crawler.utl.makePathName(title)
+            ret.append(Fetch.Pairs(a['url'], title))
 
         if total <= each:
             return ret
@@ -226,7 +213,7 @@ class Fetch:
         for b in range(each, total, each):
             url = pattern % (parse.quote(keyword), engineKey, page, each)
             content = crawler.visitWithHeader(url, h)
-            Fetch.fetch(content, ret)
+            self.fetch(content, ret)
             page = page + 1
 
         return ret
