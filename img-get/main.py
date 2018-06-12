@@ -91,7 +91,7 @@ class Utl:
                     postfix = postfix.replace(quo, "'")
                     return Utl.extractTagContent(content, prefix, postfix, "'", False)
             else:
-                print('Not found ' + tag)
+                print('Not found tag')
             return
         end = content.find(postfix, beg + len(prefix))
         if -1 == end:
@@ -210,9 +210,10 @@ class Utl:
 
 class TimeCostMisson(Thread):
     class Data:
-        def __init__(self, url, path):
+        def __init__(self, url, path, leave = False):
             self.url = url
             self.path = path
+            self.leave = False
     
     def __init__(self, crawler):
         Thread.__init__(self)
@@ -229,6 +230,9 @@ class TimeCostMisson(Thread):
         print('mission started...')
         while True:
             d = self.data.get()
+            if d.leave == True:
+                print('exit thread')
+                break
             print('begin download')
             self.crawler.download(d.url, d.path)       
 
@@ -349,11 +353,10 @@ def main():
     for fetcher in fetchers:
         exec('from %s import %s' % (fetcher, fetcher))
         obj = eval('%s.Fetch()' % (fetcher))
-
         obj.begin(crawler)
-        
         objs.append(obj)
-        
+    if None is not crawler.mission:
+        crawler.mission.push(TimeCostMisson.Data(None, None, True))
         
 if __name__ == '__main__':
     main()

@@ -8,6 +8,7 @@ import time
 import os
 import json
 import random
+from urllib import parse
 
 if sys.version.find('3') == 0:
     import urllib.request
@@ -127,9 +128,9 @@ class Fetch:
         self.download(crawler, pic, path)
         return pic
 
-    def first(self, content, page):
+    def first2(self, content, page):
         crawler, utl = self.crawler.local()
-        urls, protos = utl.extractLinks(content, '<a class="siq-partner-result" ', 'href="')
+        urls, protos = utl.extractLinks(content, 'siq-partner-result', 'href="')
         if None is urls:
             print('extractLinks return None??')
             return
@@ -150,7 +151,21 @@ class Fetch:
             else:
                 print('title is None?')
             self.second(url, path)
-            i = i + 1    
+            i = i + 1
+
+    def first(self, l):
+        for p in l:
+            title = p.title
+            url = p.url
+            if title is None:
+                print('get title failed')
+                title = time.strftime('%H%M%S', time.localtime(time.time()))
+
+            path = current() + title + os.path.sep
+            if os.path.exists(path) == False:
+                os.mkdir(path)
+
+            self.second(url, path)
 
     @staticmethod
     def callWorkThread(crawler, pic, path):
@@ -159,7 +174,63 @@ class Fetch:
     @staticmethod
     def doItMyself(crawler, pic, path):
         crawler.download(pic, path)        
-    
+
+
+    class Pairs:
+        def __init__(self, url, title):
+            self.url = url
+            self.title = title
+
+    @staticmethod
+    def fetch(content, l):
+        j = (json.loads(content))['main']
+        records = j['records']
+        if None is records or type(records) is not type([]):
+            print('No records in response from:' + url)
+            return l
+        
+        for a in records:
+            l.append(Fetch.Pairs(a['url'], re.sub('<em>|</em>', '', a['title'])))
+
+        return l
+
+    def search(self, content, keyword, previous):
+        crawler, utl = self.crawler.local()
+        engineKey = utl.findLinkAfterTag(content, '"', 'engineKey:')
+        #print('ek:' + engineKey)
+        each = 20
+        pattern = '"http://api.searchiq.co/api/search/results?q=%s&engineKey=%s&page=%d&itemsPerPage=%d&group=0&sortby=newest&autocomplete=0"'
+        url = pattern % (parse.quote(keyword), engineKey, self.beginPage, each)
+        h = utl.headers({
+            'Referer' : previous,
+            'Accept' : 'application/json, text/javascript, */*; q=0.01',
+            'Origin' : 'http://celebmafia.com'            
+            })
+        content = crawler.visitWithHeader(url, h)
+        #urls, protos = utl.extractLinks(content, '"url"', '"')
+        j = (json.loads(content))['main']
+        records = j['records']
+        if None is records or type(records) is not type([]):
+            print('No records in response from:' + url)
+            return
+
+        total = j['totalResults']
+        ret = []
+        for a in records:
+            ret.append(Fetch.Pairs(a['url'], re.sub('<em>|</em>', '', a['title'])))
+
+        if total <= each:
+            return ret
+
+        page = self.beginPage + 1
+        for b in range(each, total, each):
+            url = pattern % (parse.quote(keyword), engineKey, page, each)
+            content = crawler.visitWithHeader(url, h)
+            Fetch.fetch(content, ret)
+            page = page + 1
+
+        return ret
+        
     def begin(self, crawler):
         utl = crawler.utl
         self.crawler = crawler
@@ -168,6 +239,11 @@ class Fetch:
         for word in self.keywords:
             previous = self.homePage + word
             content = crawler.visit(previous)
+            l = self.search(content, word, previous)
+            self.first(l)
+            
+
+            '''
             pages = utl.extractTagContent(content, '<a class="_siq_pagination_single_link"', '</a>')
             beg = pages.rfind('>')
             if -1 == beg:
@@ -182,7 +258,7 @@ class Fetch:
                 return
 
             page = self.beginPage
-            end = self.endPage if self.endPage is not None and self.endPage > page else self.pages
+            end = self.endPage if self.endPage is not None and self.endPage >= page else self.pages
             if page > 1:
                 h = utl.headers({
                     'Referer' : previous
@@ -200,6 +276,6 @@ class Fetch:
                     content = crawler.visitWithHeader(previous, h)
                 else:
                     break;
-        
+        '''
         
         
