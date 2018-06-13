@@ -28,6 +28,17 @@ def current():
 
 class Utl:
     @staticmethod
+    def toInt(a, default):
+        if None is a:
+            a = default
+        else:
+            try:
+                a = int(a)
+            except Exception as e:
+                a = default
+        return a
+    
+    @staticmethod
     def makePathName(name):
         return re.sub(u'[^\u4e00-\u9fa5_.a-zA-Z0-9]', '_', name)
     
@@ -263,7 +274,7 @@ class WgetCrawler:
     def visitWithHeader(self, url, h):
         print('visit:' + url)
         fileName = Utl.getName(url)
-        cmd = 'wget -d %s%s-O %s --timeout=30 %s' % (Utl.flatternHeaders(h), Utl.flatternCookie(self.cookie), self.tmp, url)
+        cmd = 'wget %s%s-O %s --timeout=30 %s' % (Utl.flatternHeaders(h), Utl.flatternCookie(self.cookie), self.tmp, url)
         print(cmd)
         os.system(cmd)
         print(self.tmp)
@@ -356,8 +367,7 @@ def main():
         obj.begin(crawler)
         objs.append(obj)
     if None is not crawler.mission:
-        crawler.mission.push(TimeCostMisson.Data(None, None, True), '')
-        crawler.mission.join()
+        crawler.mission.push(TimeCostMisson.Data(None, None, True))
         
 if __name__ == '__main__':
     main()

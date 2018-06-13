@@ -10,15 +10,6 @@ import json
 import random
 from urllib import parse
 
-if sys.version.find('3') == 0:
-    import urllib.request
-    urlrequest = urllib.request
-    urlparse = urllib.parse
-else:
-    import urllib2
-    urlrequest = urllib2
-    urlparse = urllib
-
 if __name__ == '__main__':
     print('gotceleb do nothing as main')
 
@@ -46,23 +37,12 @@ def get_keyword(file_name):
     print(ret)
     return ret
 
-def toInt(a, default):
-    if None is a:
-        a = default
-    else:
-        try:
-            a = int(a)
-        except Exception as e:
-            a = default
-    return a
-
-def get_information(file_name):
+def get_information(utl, file_name):
     content = read(current() + file_name)
     objs = json.loads(content)
     beg = objs['from']
     end = objs['to']
-    return (toInt(beg, 1), toInt(end, 1))
-
+    return (utl.toInt(beg, 1), utl.toInt(end, 1))
 
 class fw:
     def __init__(self, path):
@@ -75,11 +55,8 @@ class fw:
 
 class Fetch:
     def __init__(self):
-        self.keywords = get_keyword('keyword-list.txt')
-        self.beginPage, self.endPage = get_information('config.json')
-        #self.homePage = 'http://www.baidu.com'
         self.homePage = 'http://celebmafia.com/search/?q='
-        self.multiPage = 'http://celebmafia.com/search/?_siq_page=%d&_siq_sort=newest&q=%s'
+        #self.multiPage = 'http://celebmafia.com/search/?_siq_page=%d&_siq_sort=newest&q=%s'
         print('celebmafia.Fetch init done')
 
     def second(self, url, path):
@@ -105,37 +82,6 @@ class Fetch:
             else:
                 print('url is None?')
         f.close()
-
-    def third(self, url, path):
-        crawler, utl = self.crawler.local()
-        
-        content = crawler.visit(url)
-        tag = 'attachment type-attachment status-inherit hentry"'
-        pic = utl.findLinkAfterTag(content, 'href="', tag)
-        if None == pic:
-            print('pic not found? NG4')
-            return
-        print('OK4')
-        content = crawler.visit(pic)
-        pic = utl.findLinkAfterTag(content, 'src="', tag)
-        if None == pic:
-            print('pic not found? NG5')
-            return
-        print('OK5')
-        name = utl.getName(pic)
-        if None is name or 250 < len(path + name):
-            name = time.strftime('%H%M%S', time.localtime(time.time()))
-            name = '%s%d%s.' % (name, random.randint(56, 8920), 'jpg')
-        else:
-            name = utl.makePathName(name)
-
-        path = path + name
-        if os.path.exists(path) == True:
-            path = path + time.strftime('%Y%m%d%H%M%S.jpg', time.localtime(time.time()))       
-        #crawler.download(pic, path)
-        #crawler.mission.push(pic, path)
-        self.download(crawler, pic, path)
-        return pic
 
     def first(self, l):
         for p in l:
@@ -200,6 +146,7 @@ class Fetch:
             return
 
         total = j['totalResults']
+        print('===>>>> total : ' + str(total))
         ret = []
         for a in records:
             title = re.sub('<em>|</em>', '', a['title'])
@@ -211,6 +158,8 @@ class Fetch:
 
         page = self.beginPage + 1
         for b in range(each, total, each):
+            if page > self.endPage:
+                break
             url = pattern % (parse.quote(keyword), engineKey, page, each)
             content = crawler.visitWithHeader(url, h)
             self.fetch(content, ret)
@@ -221,6 +170,8 @@ class Fetch:
     def begin(self, crawler):
         utl = crawler.utl
         self.crawler = crawler
+        self.keywords = get_keyword('keyword-list.txt')
+        self.beginPage, self.endPage = get_information(utl, 'config.json')        
         self.pages = 1
         self.download = Fetch.callWorkThread if crawler.mission is not None else Fetch.doItMyself
         for word in self.keywords:
@@ -229,40 +180,3 @@ class Fetch:
             l = self.search(content, word, previous)
             self.first(l)
             
-
-            '''
-            pages = utl.extractTagContent(content, '<a class="_siq_pagination_single_link"', '</a>')
-            beg = pages.rfind('>')
-            if -1 == beg:
-                print('get pages failed, set page(s) = 1')
-                pages = 1
-            else:
-                pages = pages[pages.rfind('>') + 1:]
-                pages = toInt(pages, 1)
-
-            if None is not self.beginPage and self.beginPage > self.pages:
-                print('begin page is out of range:' + str(self.pages))
-                return
-
-            page = self.beginPage
-            end = self.endPage if self.endPage is not None and self.endPage >= page else self.pages
-            if page > 1:
-                h = utl.headers({
-                    'Referer' : previous
-                    })
-                print(h)
-                previous = self.multiPage % (page, word)
-                content = crawler.visitWithHeader(previous, h)                
-            while True:
-                print('begin page:' + str(page))
-                self.first(content, page)
-                page = page + 1
-                if page <= end:#self.pages:
-                    h = utl.headers({'Referer' : previous})
-                    previous = self.multiPage % (page, word)
-                    content = crawler.visitWithHeader(previous, h)
-                else:
-                    break;
-        '''
-        
-        
