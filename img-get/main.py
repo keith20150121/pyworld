@@ -237,13 +237,17 @@ class TimeCostMisson(Thread):
         d = TimeCostMisson.Data(url, path)
         self.data.put(d)
 
+    def exit(self):
+        d = TimeCostMisson.Data(None, None, True)
+        self.data.put(d)
+
     def run(self):
         print('mission started...')
         while True:
             d = self.data.get()
             if d.leave == True:
                 print('exit thread')
-                break
+                return
             print('begin download')
             self.crawler.download(d.url, d.path)       
 
@@ -367,7 +371,7 @@ def main():
         obj.begin(crawler)
         objs.append(obj)
     if None is not crawler.mission:
-        crawler.mission.push(TimeCostMisson.Data(None, None, True))
+        crawler.mission.exit()
         
 if __name__ == '__main__':
     main()

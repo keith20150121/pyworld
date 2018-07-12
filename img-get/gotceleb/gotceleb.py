@@ -124,7 +124,7 @@ class Fetch:
         name = utl.getName(pic)
         if None is name or 250 < len(path + name):
             name = time.strftime('%H%M%S', time.localtime(time.time()))
-            name = '%s%d%s.' % (name, random.randint(56, 8920), 'jpg')
+            name = '%s%d%s.' % (name, random.randint(56, 8920), '.jpg')
         else:
             name = utl.makePathName(name)
 
